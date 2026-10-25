@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulasi Monte Carlo - Analisis Risiko Cacat Produksi</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="app-layout">
+    <!-- Sidebar / Header Nav -->
+    <header class="navbar">
+      <div class="nav-brand">
+        <div class="brand-icon">
+          <i class="fa-solid fa-chart-line"></i>
+        </div>
+        <div>
+          <h1>Monte Carlo Risk Analyst</h1>
+          <p class="brand-sub">Estimasi Probabilitas Produk Cacat Melebihi Toleransi Produksi</p>
+        </div>
+      </div>
+      <div class="nav-badges">
+        <span class="badge badge-accent"><i class="fa-solid fa-database"></i> Kaggle Dataset Real-World</span>
+        <span class="badge badge-outline"><i class="fa-solid fa-microchip"></i> 10.000 Skenario</span>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container">
+
+      <!-- Top Overview Banner -->
+      <section class="banner-card">
+        <div class="banner-content">
+          <div class="banner-tag"><i class="fa-solid fa-shield-halved"></i> Modul Studi Kasus Pemodelan & Simulasi</div>
+          <h2>Analisis Risiko Kualitas Manufaktur</h2>
+          <p>
+            Menggunakan parameter data historis riil (Mean & Std Dev) dari dataset Kaggle untuk memodelkan ribuan
+            kemungkinan jalur produksi masa depan. Menentukan apakah laju cacat berisiko melampaui batas toleransi yang
+            ditetapkan manajemen.
+          </p>
+        </div>
+        <div class="banner-stats">
+          <div class="mini-stat">
+            <span class="mini-label">Data Historis</span>
+            <span class="mini-val">1.000 Records</span>
+          </div>
+          <div class="mini-stat">
+            <span class="mini-label">Rata-rata Cacat (μ)</span>
+            <span class="mini-val">166.67 / bln</span>
+          </div>
+          <div class="mini-stat">
+            <span class="mini-label">Volatilitas (σ)</span>
+            <span class="mini-val">14.60</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Grid: Controls & KPI Cards -->
+      <div class="dashboard-grid">
+
+        <!-- Parameter Control Panel -->
+        <aside class="card control-card">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-sliders"></i> Parameter Simulasi</h3>
+            <button id="resetBtn" class="btn-text" title="Kembalikan nilai default"><i
+                class="fa-solid fa-rotate-left"></i> Default</button>
+          </div>
+          <form id="simForm" class="control-form">
+            <div class="form-group">
+              <label for="inputMu">
+                <span>Rata-rata Cacat (μ) / Bulan</span>
+                <span class="tooltip-badge" title="Nilai mean didapat dari rata-rata cacat bulanan data Kaggle">?</span>
+              </label>
+              <div class="input-wrapper">
+                <i class="fa-solid fa-calculator input-icon"></i>
+                <input type="number" id="inputMu" step="0.1" value="166.7" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="inputSigma">
+                <span>Standar Deviasi (σ)</span>
+                <span class="tooltip-badge" title="Variasi penyimpangan standar cacat bulanan">?</span>
+              </label>
+              <div class="input-wrapper">
+                <i class="fa-solid fa-wave-square input-icon"></i>
+                <input type="number" id="inputSigma" step="0.1" value="14.6" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="inputTolerance">
+                <span>Batas Toleransi Kritis (Unit)</span>
+                <span class="tooltip-badge"
+                  title="Batas maksimal jumlah cacat yang diizinkan sebelum pabrik merugi / gagal audit">?</span>
+              </label>
+              <div class="input-wrapper highlight-input">
+                <i class="fa-solid fa-triangle-exclamation input-icon"></i>
+                <input type="number" id="inputTolerance" step="1" value="200" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="inputIterations">
+                <span>Jumlah Iterasi Monte Carlo</span>
+                <span class="tooltip-badge"
+                  title="Berapa banyak kemungkinan bulan masa depan yang disimulasikan">?</span>
+              </label>
+              <div class="input-wrapper">
+                <i class="fa-solid fa-repeat input-icon"></i>
+                <select id="inputIterations">
+                  <option value="5000">5.000 Skenario</option>
+                  <option value="10000" selected>10.000 Skenario (Standar)</option>
+                  <option value="20000">20.000 Skenario (Presisi Tinggi)</option>
+                </select>
+              </div>
+            </div>
+
+            <button type="submit" id="runBtn" class="btn-primary">
+              <i class="fa-solid fa-play"></i> Jalankan Simulasi Monte Carlo
+            </button>
+          </form>
+
+          <div class="preset-box">
+            <span class="preset-title">Uji Skenario Khusus:</span>
+            <div class="preset-buttons">
+              <button class="btn-chip" data-mu="166.7" data-sigma="14.6" data-tol="200">Kondisi Normal</button>
+              <button class="btn-chip" data-mu="185.0" data-sigma="18.0" data-tol="200">Mesin Menua</button>
+              <button class="btn-chip" data-mu="166.7" data-sigma="14.6" data-tol="180">Toleransi Ketat (180)</button>
+            </div>
+          </div>
+        </aside>
+
+        <!-- KPI Metric Output -->
+        <section class="kpi-panel">
+          <div class="kpi-card highlight-kpi" id="kpiRiskCard">
+            <div class="kpi-header">
+              <span>Probabilitas Melebihi Toleransi P(X > T)</span>
+              <span id="riskBadge" class="badge-status badge-success">Risiko Rendah</span>
+            </div>
+            <div class="kpi-value-row">
+              <span class="kpi-main-number" id="probVal">1.13%</span>
+              <span class="kpi-sub-text" id="probDesc">113 dari 10.000 skenario melanggar batas</span>
+            </div>
+            <div class="progress-bar-container">
+              <div class="progress-bar" id="riskProgress" style="width: 1.13%;"></div>
+            </div>
+          </div>
+
+          <div class="kpi-subgrid">
+            <div class="kpi-card">
+              <div class="kpi-label"><i class="fa-solid fa-shield-check"></i> Probabilitas Aman</div>
+              <div class="kpi-val" id="probSafeVal">98.87%</div>
+              <div class="kpi-hint">Cacat masih dalam batas toleransi</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label"><i class="fa-solid fa-arrow-trend-up"></i> Z-Score Ambang Batas</div>
+              <div class="kpi-val" id="zScoreVal">+2.28 σ</div>
+              <div class="kpi-hint">Jarak toleransi dari nilai rata-rata</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label"><i class="fa-solid fa-chart-column"></i> Persentil ke-95 (P95)</div>
+              <div class="kpi-val" id="p95Val">190.7 unit</div>
+              <div class="kpi-hint">95% skenario cacat di bawah angka ini</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label"><i class="fa-solid fa-skull-crossbones"></i> Kasus Terburuk (Max)</div>
+              <div class="kpi-val" id="maxVal">224 unit</div>
+              <div class="kpi-hint">Jumlah cacat tertinggi yang terekam</div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- Charts Section -->
+      <section class="card chart-section">
+        <div class="tabs-header">
+          <button class="tab-btn active" data-tab="tab-histogram"><i class="fa-solid fa-chart-simple"></i> Histogram
+            Distribusi & Area Risiko</button>
+          <button class="tab-btn" data-tab="tab-cdf"><i class="fa-solid fa-arrow-up-right-dots"></i> Kurva CDF
+            (Kumulatif)</button>
+          <button class="tab-btn" data-tab="tab-data"><i class="fa-solid fa-table"></i> Data Historis Kaggle</button>
+        </div>
+
+        <!-- Tab 1: Histogram -->
+        <div class="tab-content active" id="tab-histogram">
+          <div class="chart-wrapper">
+            <canvas id="histogramChart"></canvas>
+          </div>
+          <div class="chart-legend-box">
+            <span class="legend-item"><span class="dot dot-blue"></span> Skenario Aman (≤ Batas Toleransi)</span>
+            <span class="legend-item"><span class="dot dot-red"></span> Skenario Berisiko / Pelanggaran (> Batas
+              Toleransi)</span>
+            <span class="legend-item"><span class="line line-red"></span> Garis Batas Toleransi</span>
+            <span class="legend-item"><span class="line line-green"></span> Rata-rata (μ)</span>
+          </div>
+        </div>
+
+        <!-- Tab 2: CDF -->
+        <div class="tab-content" id="tab-cdf">
+          <div class="chart-wrapper">
+            <canvas id="cdfChart"></canvas>
+          </div>
+          <div class="chart-legend-box">
+            <span class="legend-item"><span class="dot dot-purple"></span> Cumulative Probability Curve (%)</span>
+            <span class="legend-item"><span class="line line-red"></span> Titik Batas Toleransi</span>
+          </div>
+        </div>
+
+        <!-- Tab 3: Dataset Summary -->
+        <div class="tab-content" id="tab-data">
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Periode Bulan</th>
+                  <th>Jumlah Cacat</th>
+                  <th>Severity Terbanyak</th>
+                  <th>Rata-rata Biaya Perbaikan</th>
+                  <th>Status Kontrol</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Januari 2024</td>
+                  <td><strong>191 unit</strong></td>
+                  <td><span class="badge badge-warning">Moderate</span></td>
+                  <td>Rp 512.400</td>
+                  <td><span class="badge badge-success">Dalam Toleransi</span></td>
+                </tr>
+                <tr>
+                  <td>Februari 2024</td>
+                  <td><strong>160 unit</strong></td>
+                  <td><span class="badge badge-info">Minor</span></td>
+                  <td>Rp 498.200</td>
+                  <td><span class="badge badge-success">Dalam Toleransi</span></td>
+                </tr>
+                <tr>
+                  <td>Maret 2024</td>
+                  <td><strong>175 unit</strong></td>
+                  <td><span class="badge badge-danger">Critical</span></td>
+                  <td>Rp 530.100</td>
+                  <td><span class="badge badge-success">Dalam Toleransi</span></td>
+                </tr>
+                <tr>
+                  <td>April 2024</td>
+                  <td><strong>156 unit</strong></td>
+                  <td><span class="badge badge-info">Minor</span></td>
+                  <td>Rp 487.600</td>
+                  <td><span class="badge badge-success">Dalam Toleransi</span></td>
+                </tr>
+                <tr>
+                  <td>Mei 2024</td>
+                  <td><strong>167 unit</strong></td>
+                  <td><span class="badge badge-warning">Moderate</span></td>
+                  <td>Rp 505.300</td>
+                  <td><span class="badge badge-success">Dalam Toleransi</span></td>
+                </tr>
+                <tr>
+                  <td>Juni 2024</td>
+                  <td><strong>151 unit</strong></td>
+                  <td><span class="badge badge-info">Minor</span></td>
+                  <td>Rp 512.100</td>
+                  <td><span class="badge badge-success">Dalam Toleransi</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Business Insights & Action Plan -->
+      <section class="card insights-card">
+        <div class="card-header">
+          <h3><i class="fa-solid fa-lightbulb"></i> Kesimpulan Analisis Risiko & Rekomendasi Bisnis</h3>
+        </div>
+        <div class="insights-grid">
+          <div class="insight-item">
+            <div class="insight-icon"><i class="fa-solid fa-magnifying-glass-chart"></i></div>
+            <div>
+              <h4>Temuan Simulasi</h4>
+              <p id="insightFinding">
+                Dengan parameter saat ini, probabilitas terjadinya produk cacat melebihi 200 unit per bulan adalah
+                <strong>1.13%</strong>. Ini menunjukkan bahwa sistem kontrol mutu pabrik bekerja dengan andal.
+              </p>
+            </div>
+          </div>
+          <div class="insight-item">
+            <div class="insight-icon"><i class="fa-solid fa-bell"></i></div>
+            <div>
+              <h4>Early Warning System</h4>
+              <p>
+                Manajemen sebaiknya menetapkan <strong>Early Warning Threshold pada 185 unit</strong> (Persentil ke-90).
+                Jika pada minggu ke-3 produksi bulanan tren sudah mendekati angka ini, tim maintenance wajib memeriksa
+                lini mesin perakitan.
+              </p>
+            </div>
+          </div>
+          <div class="insight-item">
+            <div class="insight-icon"><i class="fa-solid fa-coins"></i></div>
+            <div>
+              <h4>Estimasi Dampak Finansial</h4>
+              <p>
+                Rata-rata biaya perbaikan per unit cacat adalah $507. Dengan ekspektasi rata-rata 166.7 unit
+                cacat/bulan, estimasi cadangan biaya perbaikan bulanan yang harus disiapkan divisi keuangan adalah
+                <strong>$84.620 / bulan</strong>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="app-footer">
+      <p>Proyek Pemodelan & Simulasi (TA-03) &bull; Simulasi Monte Carlo dengan Parameter Dataset Kaggle &bull; Dibuat
+        untuk Analisis Kualitas & Risiko Produksi</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
